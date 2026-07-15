@@ -19,20 +19,12 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Cache Buildozer
-      uses: actions/cache@v4
-      with:
-        path: |
-          .buildozer_global
-          .buildozer
-        key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
-
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential libltdl-dev libffi-dev libssl-dev python3-dev zip unzip openjdk-17-jdk
         pip install --upgrade pip
-        pip install cython buildozer Pillow
+        pip install "Cython<3.0" buildozer Pillow virtualenv
 
     - name: Auto Convert and Rename Icon
       run: |
@@ -64,7 +56,7 @@ jobs:
         "
 
     - name: Build with Buildozer
-      run: yes|buildozer android debug
+      run: buildozer android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
