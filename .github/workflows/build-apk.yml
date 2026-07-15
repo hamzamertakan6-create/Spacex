@@ -3,8 +3,6 @@ name: Build APK
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   build:
@@ -14,49 +12,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-
-    - name: Install Build Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libltdl-dev libffi-dev libssl-dev python3-dev zip unzip openjdk-17-jdk
-        pip install --upgrade pip
-        pip install "Cython<3.0" buildozer Pillow virtualenv
-
-    - name: Auto Convert and Rename Icon
-      run: |
-        python -c "
-        import os
-        from PIL import Image
-        
-        os.makedirs('assets', exist_ok=True)
-        found = False
-        
-        for root, dirs, files in os.walk('.'):
-            for f in files:
-                f_lower = f.lower()
-                if ('pngtree' in f_lower or 'airplane' in f_lower or '4277510' in f_lower) and f != 'icon.png':
-                    source_path = os.path.join(root, f)
-                    try:
-                        with Image.open(source_path) as img:
-                            img.convert('RGBA').resize((512, 512)).save('assets/icon.png', 'PNG')
-                        print(f'Ikon basariyla ayarlandi: {source_path}')
-                        found = True
-                        break
-                    except Exception as e:
-                        print(f'Hata: {e}')
-            if found:
-                break
-                
-        if not found:
-            Image.new('RGBA', (512, 512), (70, 130, 180)).save('assets/icon.png')
-        "
-
     - name: Build with Buildozer
-      run: buildozer android debug
+      uses: docker://kivy/buildozer:latest
+      with:
+        args: android debug
+      env:
+        # Buildozer'ın işini yapması için gerekli izinler
+        ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
