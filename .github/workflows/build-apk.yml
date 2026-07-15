@@ -17,7 +17,7 @@ jobs:
       with:
         args: android debug
       env:
-        # Buildozer'ın işini yapması için gerekli izinler
+        BUILDOZER_ALLOW_ROOT: '1'
         ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
 
     - name: Upload APK
