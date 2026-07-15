@@ -5,7 +5,8 @@ package.domain = com.spacewarx.game
 source.dir = .
 source.include_exts = py,png,ttf,json,atlas,wav,ico
 version = 0.1
-requirements = python3==3.11.8,kivy==2.2.1
+requirements = python3==3.11
+requirements = python3,kivy==2.2.1
 orientation = portrait
 fullscreen = 1
 icon.filename = %(source.dir)s/assets/assets/—Pngtree—vector airplane icon_4277510.png
