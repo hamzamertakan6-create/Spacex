@@ -8,7 +8,7 @@ version = 0.1
 requirements = python3,kivy==2.2.1
 orientation = portrait
 fullscreen = 1
-icon.filename = %(source.dir)s/assets/icon.png
+icon.filename = %(source.dir)s/assets/assets/—Pngtree—vector airplane icon_4277510.png
 
 android.permissions = INTERNET
 android.api = 33
