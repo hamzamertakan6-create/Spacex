@@ -1,1 +1,135 @@
+name: Build APK
 
+on:
+  workflow_dispatch:
+    inputs:
+      buildType:
+        type: choice
+        required: true
+        default: "debug"
+        description: "Build Type"
+        options:
+          - "debug"
+          - "release"
+      release:
+        type: boolean
+        description: "Release built APKs"
+      tag:
+        type: string
+        description: "Tag for the release"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Cache Buildozer global directory
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+
+      - name: Cache Buildozer app build directory
+        uses: actions/cache@v4
+        with:
+          path: .buildozer
+          key: buildozer-local-${{ hashFiles('buildozer.spec') }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk python3-pip autoconf libtool \
+            pkg-config zlib1g-dev libncurses-dev cmake libffi-dev \
+            libssl-dev automake build-essential ccache
+
+      - name: Install Buildozer and Cython
+        run: |
+          pip install --upgrade pip
+          pip install --upgrade buildozer cython==0.29.33 virtualenv
+
+      # Assets/audio must exist before packaging, since your README
+      # generates them with separate scripts before "python main.py"
+      - name: Generate game assets
+        run: |
+          pip install -r requirements.txt
+          python gen_assets.py
+          python gen_assets_phase1.py
+          if [ -f gen_assets_phase2.py ]; then python gen_assets_phase2.py; fi
+          if [ -f gen_assets_phase3.py ]; then python gen_assets_phase3.py; fi
+          if [ -f gen_music.py ]; then python gen_music.py; fi
+          if [ -f gen_sfx.py ]; then python gen_sfx.py; fi
+
+      - name: Decode keystore (release only)
+        if: ${{ github.event.inputs.buildType == 'release' }}
+        env:
+          ENCODED_STRING: ${{ secrets.KEYSTORE }}
+        run: echo "$ENCODED_STRING" | base64 --decode > release.keystore
+
+      - name: Build debug APK
+        if: ${{ github.event.inputs.buildType == 'debug' }}
+        run: |
+          yes | buildozer android debug
+
+      - name: Build release APK
+        if: ${{ github.event.inputs.buildType == 'release' }}
+        env:
+          P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/release.keystore
+          P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.KEYSTORE_PASSWORD }}
+          P4A_RELEASE_KEYALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          yes | buildozer android release
+
+      - name: Collect APKs
+        run: |
+          mkdir -p output
+          find bin -name "*.apk" -exec cp {} output/ \;
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build output
+          path: output/*.apk
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event.inputs.release == 'true' && startsWith(github.event.inputs.tag, 'v')
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch APKs
+        uses: actions/download-artifact@v4
+        with:
+          path: ./
+          merge-multiple: true
+
+      - name: Create new tag
+        run: |
+          git tag "${{ github.event.inputs.tag }}"
+          git push --tags
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: "*.apk"
+          generate_release_notes: true
