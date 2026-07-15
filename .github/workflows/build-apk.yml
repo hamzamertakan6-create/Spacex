@@ -55,11 +55,8 @@ jobs:
             Image.new('RGBA', (512, 512), (70, 130, 180)).save('assets/icon.png')
         "
 
-    - name: Build with Buildozer
-      run: |
-        rm -rf .buildozer
-        buildozer android clean
-        buildozer android debug
+    - - name: Build with Buildozer
+      run: buildozer android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
